@@ -1,0 +1,129 @@
+# version: "3.8"
+
+services:
+  n8n:
+    image: docker.n8n.io/n8nio/n8n
+    container_name: n8n
+    restart: unless-stopped
+    environment:
+      # details for n8n to connect to the Ollama service
+      - N8N_HOST=${N8N_HOST}
+      - N8N_PORT=${N8N_PORT}
+      - WEBHOOK_URL=http://localhost:${N8N_PORT}
+      - N8N_PROTOCOL=http
+      - GENERIC_TIMEZONE=${GENERIC_TIMEZONE}
+      # enable community nodes as tools
+      - N8N_COMMUNITY_PACKAGES_ALLOW_TOOL_USAGE=${N8N_COMMUNITY_PACKAGES_ALLOW_TOOL_USAGE}
+      # Permissions 0644 for n8n settings file /home/node/.n8n/config
+      - N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true
+      # Configure n8n to connect to the PostgreSQL database
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=postgres
+      - DB_POSTGRESDB_PORT=${POSTGRES_PORT}
+      - DB_POSTGRESDB_DATABASE=${POSTGRES_DB}
+      - DB_POSTGRESDB_USER=${POSTGRES_USER}
+      - DB_POSTGRESDB_PASSWORD=${POSTGRES_PASSWORD}
+      # # Define credentials for secure access to the n8n editor
+      # - N8N_BASIC_AUTH_ACTIVE=true
+      # - N8N_BASIC_AUTH_USER=admin
+      # - N8N_BASIC_AUTH_PASSWORD=changeme
+      # # variables for ssl issues and error in docker log errors
+      - N8N_RUNNERS_ENABLED=true
+      - N8N_BLOCK_ENV_ACCESS_IN_NODE=false
+      # # to avoid Response error code: SELF_SIGNED_CERT_IN_CHAIN
+      - NODE_TLS_REJECT_UNAUTHORIZED=0
+      - N8N_IGNORE_SSL_ISSUES=true
+      - OLLAMA_HOST=${OLLAMA_HOST:-ollama:11434}
+#     depends_on:
+#       # n8n requires the database and ollama to be running first
+#       postgres:
+#         condition: service_healthy
+#       ollama:
+#         condition: service_started
+#     restart: unless-stopped
+
+# # Define a custom network for all services to communicate with each other
+# networks:
+#   n8n-network:
+#     driver: bridge
+
+    ports:
+      - "${N8N_PORT}:${N8N_PORT}"
+    volumes:
+      - ./data/n8n-data:/home/node/.n8n
+    depends_on:
+       # n8n requires the database and ollama to be running first
+      - postgres
+    # Define a custom network for all services to communicate with each other
+    networks:
+      - n8n-network
+
+  ollama:
+    image: ollama/ollama
+    container_name: ollama
+    restart: unless-stopped
+    environment:
+      # Use host.docker.internal to access a proxy running on the host machine
+      # - HTTPS_PROXY=http://host.docker.internal:3128
+      # - HTTPS_PROXY=http://host.docker.internal:11434
+      # Use NO_PROXY to exclude specific domains, like ollama's registry, if needed
+      # - NO_PROXY=.ollama.ai,localhost,127.0.0.1
+      # - DOCKER_TLS_CERTDIR=""
+      # - NODE_TLS_REJECT_UNAUTHORIZED=0
+    # WARNING: THIS IS INSECURE AND SHOULD ONLY BE USED FOR TESTING
+    # Set the OLLAMA_TLS_INSECURE environment variable to bypass TLS verification.
+      # - OLLAMA_TLS_INSECURE=true
+    ports:
+      - "${OLLAMA_PORT}:11434"
+    volumes:
+      - ./data/ollama-data:/root/.ollama
+    networks:
+      - n8n-network
+
+  postgres:
+    image: pgvector/pgvector:0.8.1-pg17
+    container_name: postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    ports:
+      - "${POSTGRES_PORT}:5432"
+    volumes:
+      - ./data/postgres-data:/var/lib/postgresql/data
+      - ./init-pgvector.sql:/docker-entrypoint-initdb.d/init-pgvector.sql # initiate pgvector extension
+    networks:
+      - n8n-network
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: pgadmin
+    restart: unless-stopped
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=${PGADMIN_EMAIL}
+      - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_PASSWORD}
+      # - PGADMIN_LISTEN_PORT=${PGADMIN_PORT}
+    ports:
+      - "${PGADMIN_PORT}:80"
+    volumes:
+      - ./data/pgadmin-data:/var/lib/pgadmin
+    depends_on:
+      - postgres
+    networks:
+      - n8n-network
+
+volumes:
+  n8n-data:
+  ollama-data:
+  postgres-data:
+  pgadmin-data:
+
+
+networks:
+  n8n-network:
+    driver: bridge
+
+# 
+# setup n8n ollama postgresql with pyvector and pgadmin using docker in windows 11 with no gpu
+# docker compose file with ollama n8n and postgres with pgvector services set user defined folders
