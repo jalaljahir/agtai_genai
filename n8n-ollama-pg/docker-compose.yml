@@ -31,9 +31,9 @@ services:
       - N8N_RUNNERS_ENABLED=true
       - N8N_BLOCK_ENV_ACCESS_IN_NODE=false
       # # to avoid Response error code: SELF_SIGNED_CERT_IN_CHAIN
-      - NODE_TLS_REJECT_UNAUTHORIZED=0
-      - N8N_IGNORE_SSL_ISSUES=true
-      - OLLAMA_HOST=${OLLAMA_HOST:-ollama:11434}
+      # - NODE_TLS_REJECT_UNAUTHORIZED=0
+      # - N8N_IGNORE_SSL_ISSUES=true
+      # - OLLAMA_HOST=${OLLAMA_HOST:-ollama:11434}
 #     depends_on:
 #       # n8n requires the database and ollama to be running first
 #       postgres:
@@ -62,7 +62,7 @@ services:
     image: ollama/ollama
     container_name: ollama
     restart: unless-stopped
-    environment:
+    # environment:
       # Use host.docker.internal to access a proxy running on the host machine
       # - HTTPS_PROXY=http://host.docker.internal:3128
       # - HTTPS_PROXY=http://host.docker.internal:11434

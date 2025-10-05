@@ -1,0 +1,44 @@
+# inspiration:
+How to Build a Local AI Agent With n8n (NO CODE!)
+https://www.youtube.com/watch?v=qqjzohCle48&t=245s
+
+
+
+
+
+
+docker compose up -d
+
+n8n: Access the n8n web interface by navigating to http://localhost:5678
+
+ollama: http://localhost:11434
+
+# run command prompt within ollama container
+docker exec -it ollama bash
+# dowload llama3 and nomic-embed-text
+ollama pull llama3
+ollama pull nomic-embed-text
+
+# connect ollama - base url in n8n:
+http://host.docker.internal:11434
+# close & open the ollama chat node and the list of models will show
+
+# connect postgres to n8n - 
+find the host name by running the /conninfo command OR the following qry in pgadmin:
+SELECT inet_server_addr();
+
+
+
+
+pgAdmin: Access pgAdmin by going to http://localhost:5050 in your browser. Log in with the email and password you configured in your docker-compose.yml file.
+To add a connection, click Add New Server, give it a name, and go to the Connection tab. Use the following details:
+Host name/address: postgres-pgvector
+Port: 5432
+Username: n8nuser
+Password: n8npass
+Click Save. 
+
+# check pg vector extension
+SELECT * FROM pg_extension WHERE extname = 'vector';
+# if no results then run the following to create extension
+CREATE EXTENSION IF NOT EXISTS vector;
